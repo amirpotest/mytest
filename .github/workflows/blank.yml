@@ -34,5 +34,6 @@ jobs:
       shell: pwsh
       run: |
         # ایجاد یک tunnel TCP خصوصی با توکن ثابت و غیرفعال کردن حالت تعاملی (--headless)
-        .\zrok\zrok2.exe share private --backend-mode tcpTunnel 127.0.0.1:3389 --headless
+        .\zrok\zrok2.exe share private 127.0.0.1:3389 --backend-mode tcpTunnel --headless
+        netstat -ano | findstr 3389
       

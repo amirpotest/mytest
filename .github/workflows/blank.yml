@@ -7,10 +7,20 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Download zrok
+    - name: Download and extract zrok
       run: |
+        # Create target directory
+        New-Item -ItemType Directory -Force .\zrok | Out-Null
+        # Download
         curl.exe -L -o zrok.tar.gz https://github.com/openziti/zrok/releases/download/v2.0.4/zrok_2.0.4_windows_amd64.tar.gz
+        # Extract into .\zrok
         tar -xzf zrok.tar.gz -C .\zrok
+        # If there is a subfolder (e.g., zrok_2.0.4_windows_amd64), move its contents up
+        Get-ChildItem -Path .\zrok -Directory | ForEach-Object {
+          Move-Item "$($_.FullName)\*" .\zrok\ -Force
+          Remove-Item $_.FullName -Recurse -Force
+        }
+        # Cleanup
         Remove-Item zrok.tar.gz
 
     - name: Enable RDP

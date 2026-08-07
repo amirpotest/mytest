@@ -131,11 +131,7 @@ jobs:
     - name: Start Xray
       shell: powershell
       run: |
-        Start-Process 
-        -FilePath "C:\xray\xray.exe" 
-        -ArgumentList "run -config C:\xray\config.json" `
-        -WindowStyle Hidden
-
+        Start-Process -FilePath "C:\xray\xray.exe" -ArgumentList "run -config C:\xray\config.json" -WindowStyle Hidden
         Start-Sleep -Seconds 5
 
     - name: Check Xray

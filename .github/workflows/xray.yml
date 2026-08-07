@@ -124,13 +124,7 @@ jobs:
     - name: Firewall
       shell: powershell
       run: |
-
-        New-NetFirewallRule 
-        -DisplayName "Xray Reality 443" 
-        -Direction Inbound 
-        -Protocol TCP 
-        -LocalPort 443 
-        -Action Allow
+        New-NetFirewallRule -DisplayName "Xray Reality 443" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow
 
 
 

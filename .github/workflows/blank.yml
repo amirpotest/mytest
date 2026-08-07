@@ -28,19 +28,7 @@ jobs:
     - name: Enable zrok environment
       env:
         ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
-      run: |
-        # اگر zrok.exe توی مسیر درست نبود، پیداش کن و بیارش بالا
-        if (!(Test-Path .\zrok\zrok.exe)) {
-          $exe = Get-ChildItem -Path .\zrok -Recurse -Filter "zrok.exe" | Select-Object -First 1
-          if ($exe) {
-            Move-Item $exe.FullName .\zrok\zrok.exe -Force
-            Write-Host "zrok.exe found in subfolder and moved to .\zrok\"
-          } else {
-            Write-Error "zrok.exe not found anywhere in .\zrok"
-            exit 1
-          }
-        }
-        .\zrok\zrok.exe enable $env:ZROK_TOKEN
+      run: .\zrok\zrok2.exe enable $env:ZROK_TOKEN
 
     - name: Reserve TCP share for RDP
       id: reserve

@@ -9,9 +9,9 @@ jobs:
     steps:
     - name: Download zrok
       run: |
-        Invoke-WebRequest https://github.com/openziti/zrok/releases/download/v2.0.4/zrok_2.0.4_windows_amd64.tar.gz -OutFile zrok.zip
-        Expand-Archive zrok.zip -DestinationPath .\zrok
-        Remove-Item zrok.zip
+        curl.exe -L -o zrok.tar.gz https://github.com/openziti/zrok/releases/download/v2.0.4/zrok_2.0.4_windows_amd64.tar.gz
+        tar -xzf zrok.tar.gz -C .\zrok
+        Remove-Item zrok.tar.gz
 
     - name: Enable RDP
       run: |

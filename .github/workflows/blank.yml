@@ -33,9 +33,18 @@ jobs:
     - name: Create private TCP tunnel for RDP
       id: tunnel
       run: |
-        $result = .\zrok\zrok2.exe share private --backend-mode tcpTunnel 127.0.0.1:3389 --share-token "rdp-tunnel" --headless --json
-        $json = $result | ConvertFrom-Json
-        $token = $json.token
-        if (-not $token) { $token = "rdp-tunnel" }
+        # اجرای دستور و گرفتن خروجی
+        $output = .\zrok\zrok2.exe share private --backend-mode tcpTunnel 127.0.0.1:3389 --share-token "rdp-tunnel" --headless 2>&1
+        Write-Host "Output: $output"
+    
+        # استخراج توکن از خروجی با regex
+        if ($output -match 'Share token:\s*(\S+)') {
+            $token = $matches[1]
+        } elseif ($output -match 'token:\s*(\S+)') {
+            $token = $matches[1]
+        } else {
+            $token = "rdp-tunnel"
+        }
+    
         echo "ZROK_SHARE_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Append
         echo "Share token: $token"

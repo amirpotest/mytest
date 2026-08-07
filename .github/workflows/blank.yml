@@ -1,0 +1,40 @@
+name: CI
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Download zrok
+      run: |
+        Invoke-WebRequest https://github.com/openziti/zrok/releases/latest/download/zrok_windows_amd64.zip -OutFile zrok.zip
+        Expand-Archive zrok.zip -DestinationPath .\zrok
+        Remove-Item zrok.zip
+
+    - name: Enable RDP
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+
+    - name: Enable zrok environment
+      env:
+        ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
+      run: .\zrok\zrok.exe enable $env:ZROK_TOKEN
+
+    - name: Reserve TCP share for RDP
+      id: reserve
+      run: |
+        $result = .\zrok\zrok.exe reserve private --backend-mode tcpTunnel 127.0.0.1:3389 --json-output
+        $json = $result | ConvertFrom-Json
+        $token = $json.token
+        echo "ZROK_SHARE_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Append
+        echo "Reserved share token: $token"
+
+    - name: Share reserved TCP tunnel
+      run: |
+        .\zrok\zrok.exe share reserved $env:ZROK_SHARE_TOKEN
+      shell: pwsh

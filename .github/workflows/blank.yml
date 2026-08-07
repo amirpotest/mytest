@@ -9,7 +9,7 @@ jobs:
     steps:
     - name: Download zrok
       run: |
-        Invoke-WebRequest https://github.com/openziti/zrok/releases/latest/download/zrok_windows_amd64.zip -OutFile zrok.zip
+        Invoke-WebRequest https://github.com/openziti/zrok/releases/download/v2.0.4/zrok_2.0.4_windows_amd64.tar.gz -OutFile zrok.zip
         Expand-Archive zrok.zip -DestinationPath .\zrok
         Remove-Item zrok.zip
 

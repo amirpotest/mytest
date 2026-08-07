@@ -30,24 +30,8 @@ jobs:
         ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
       run: .\zrok\zrok2.exe enable $env:ZROK_TOKEN
 
-    - name: Reserve TCP share for RDP
-      id: reserve
+    - name: Create persistent private TCP tunnel
       run: |
-        # مرحله 1: رزرو کردن share و گرفتن توکن
-        $result = .\zrok\zrok2.exe reserve private --backend-mode tcpTunnel 127.0.0.1:3389 --headless
-        Write-Host "Reserve output: $result"
-    
-        # استخراج توکن از خروجی
-        if ($result -match '([a-z0-9]{12,})') {
-            $token = $matches[1]
-        } else {
-            $token = "rdp-tunnel"
-        }
-        echo "ZROK_SHARE_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Append
-        echo "Reserved share token: $token"
-
-    - name: Share reserved TCP tunnel
-      run: |
-        # مرحله 2: استفاده از توکن رزرو شده برای اجرای tunnel
-        .\zrok\zrok2.exe share reserved $env:ZROK_SHARE_TOKEN --headless
+        # ایجاد یک tunnel TCP خصوصی با توکن ثابت و غیرفعال کردن حالت تعاملی (--headless)
+        .\zrok\zrok2.exe share private --backend-mode tcpTunnel 127.0.0.1:3389 --share-token "rdp-tunnel" --headless
       shell: pwsh

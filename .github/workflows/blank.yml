@@ -31,7 +31,9 @@ jobs:
       run: .\zrok\zrok2.exe enable $env:ZROK_TOKEN
 
     - name: Create persistent private TCP tunnel
+      shell: pwsh
       run: |
         # ایجاد یک tunnel TCP خصوصی با توکن ثابت و غیرفعال کردن حالت تعاملی (--headless)
-        .\zrok\zrok2.exe share private --backend-mode tcpTunnel 127.0.0.1:3389 --headless
-      shell: pwsh
+        .\zrok\zrok2.exe share private --backend-mode tcpTunnel 127.0.0.1:3389 --headless *> zrok.log
+        Get-Content zrok.log
+      

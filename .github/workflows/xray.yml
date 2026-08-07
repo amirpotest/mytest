@@ -1,0 +1,251 @@
+name: Xray Zrok Auto
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+
+    - name: Prepare folders
+      shell: cmd
+      run: |
+        mkdir C:\xray 2>nul
+
+
+    - name: Download Xray
+      shell: cmd
+      run: |
+        curl -L -o C:\xray\xray.zip https://github.com/XTLS/Xray-core/releases/latest/download/Xray-windows-64.zip
+
+        powershell -Command "Expand-Archive -Force C:\xray\xray.zip C:\xray"
+
+        del C:\xray\xray.zip
+
+
+    - name: Generate Xray Keys
+      shell: cmd
+      run: |
+
+        cd /d C:\xray
+
+        for /f %%i in ('xray.exe uuid') do set UUID=%%i
+
+        for /f "tokens=1,* delims=:" %%a in ('xray.exe x25519') do (
+            if "%%a"=="PrivateKey" set PRIVATE=%%b
+            if "%%a"=="Password (PublicKey)" set PUBLIC=%%b
+        )
+
+        set PRIVATE=%PRIVATE:~1%
+        set PUBLIC=%PUBLIC:~1%
+
+        for /f %%i in ('powershell -Command "$bytes = New-Object byte[] 8; $rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider; $rng.GetBytes($bytes); ($bytes | ForEach-Object { $_.ToString('x2') }) -join ''"') do set SHORTID=%%i
+
+
+        echo UUID=%UUID%
+        echo PRIVATE=%PRIVATE%
+        echo PUBLIC=%PUBLIC%
+        echo SHORTID=%SHORTID%
+
+
+        (
+        echo UUID=%UUID%
+        echo PRIVATE=%PRIVATE%
+        echo PUBLIC=%PUBLIC%
+        echo SHORTID=%SHORTID%
+        ) > C:\xray\keys.txt
+        
+    - name: Create Xray Config
+      shell: cmd
+      run: |
+
+        cd /d C:\xray
+
+        for /f "tokens=1,* delims==" %%a in (keys.txt) do (
+            if "%%a"=="UUID" set UUID=%%b
+            if "%%a"=="PRIVATE" set PRIVATE=%%b
+            if "%%a"=="PUBLIC" set PUBLIC=%%b
+            if "%%a"=="SHORTID" set SHORTID=%%b
+        )
+
+
+        (
+        echo {
+        echo   "log": {
+        echo     "loglevel": "warning"
+        echo   },
+        echo   "inbounds": [
+        echo     {
+        echo       "port": 443,
+        echo       "protocol": "vless",
+        echo       "settings": {
+        echo         "clients": [
+        echo           {
+        echo             "id": "%UUID%",
+        echo             "flow": "xtls-rprx-vision"
+        echo           }
+        echo         ],
+        echo         "decryption": "none"
+        echo       },
+        echo       "streamSettings": {
+        echo         "network": "tcp",
+        echo         "security": "reality",
+        echo         "realitySettings": {
+        echo           "show": false,
+        echo           "dest": "www.cloudflare.com:443",
+        echo           "serverNames": [
+        echo             "www.cloudflare.com"
+        echo           ],
+        echo           "privateKey": "%PRIVATE%",
+        echo           "shortIds": [
+        echo             "%SHORTID%"
+        echo           ],
+        echo           "fingerprint": "chrome"
+        echo         }
+        echo       }
+        echo     }
+        echo   ],
+        echo   "outbounds": [
+        echo     {
+        echo       "protocol": "freedom"
+        echo     }
+        echo   ]
+        echo }
+        ) > C:\xray\config.json
+
+
+
+    - name: Firewall
+      shell: powershell
+      run: |
+
+        New-NetFirewallRule 
+        -DisplayName "Xray Reality 443" 
+        -Direction Inbound 
+        -Protocol TCP 
+        -LocalPort 443 
+        -Action Allow
+
+
+
+    - name: Start Xray
+      shell: cmd
+      run: |
+
+        start "" C:\xray\xray.exe run -config C:\xray\config.json
+
+        timeout /t 5
+
+
+
+    - name: Install zrok
+      shell: powershell
+      run: |
+
+        Invoke-WebRequest 
+        https://github.com/openziti/zrok/releases/latest/download/zrok_windows_amd64.exe `
+        -OutFile C:\xray\zrok.exe
+
+
+
+    - name: Enable zrok
+      shell: cmd
+      env:
+        ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
+      run: |
+
+        C:\xray\zrok.exe enable %ZROK_TOKEN%
+
+    - name: Create zrok Share
+      shell: cmd
+      run: |
+
+        cd /d C:\xray
+
+        for /f "tokens=1,* delims==" %%a in (keys.txt) do (
+            if "%%a"=="UUID" set UUID=%%b
+            if "%%a"=="PUBLIC" set PUBLIC=%%b
+            if "%%a"=="SHORTID" set SHORTID=%%b
+        )
+
+
+        echo Creating zrok share...
+
+
+        C:\xray\zrok.exe share public localhost:443 --backend-mode tcp > zrok.txt
+
+
+        type zrok.txt
+
+    - name: Generate VLESS Link
+      shell: powershell
+      run: |
+
+        $keys = Get-Content C:\xray\keys.txt
+
+        foreach ($line in $keys) {
+          if ($line -like "UUID=*") {
+            $UUID = $line.Split("=")[1]
+          }
+
+          if ($line -like "PUBLIC=*") {
+            $PUBLIC = $line.Split("=")[1]
+          }
+
+          if ($line -like "SHORTID=*") {
+            $SHORTID = $line.Split("=")[1]
+          }
+        }
+
+
+        $zrok = Get-Content C:\xray\zrok.txt |
+        Select-String "tcp://" |
+        ForEach-Object {
+            $_.ToString()
+        }
+
+
+        $zrok = $zrok -replace "tcp://",""
+
+
+        $LINK = "vless://$UUID@$zrok" +
+        "?type=tcp" +
+        "&security=reality" +
+        "&pbk=$PUBLIC" +
+        "&fp=chrome" +
+        "&sni=www.cloudflare.com" +
+        "&sid=$SHORTID" +
+        "&flow=xtls-rprx-vision" +
+        "#MrNova"
+
+
+        $LINK | Out-File C:\xray\link.txt -Encoding utf8
+
+
+        Write-Host $LINK
+
+    - name: Update Cloudflare KV
+      shell: powershell
+      env:
+        CF_TOKEN: ${{ secrets.CF_TOKEN }}
+        CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        CF_NAMESPACE_ID: ${{ secrets.CF_NAMESPACE_ID }}
+      run: |
+
+        $LINK = Get-Content C:\xray\link.txt
+
+
+        curl.exe -X PUT 
+        "https://api.cloudflare.com/client/v4/accounts/$env:CF_ACCOUNT_ID/storage/kv/namespaces/$env:CF_NAMESPACE_ID/values/vless" 
+        -H "Authorization: Bearer $env:CF_TOKEN" 
+        -H "Content-Type: text/plain" 
+        --data-binary "$LINK"
+
+
+        echo KV Updated

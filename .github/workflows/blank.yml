@@ -33,5 +33,5 @@ jobs:
     - name: Create persistent private TCP tunnel
       run: |
         # ایجاد یک tunnel TCP خصوصی با توکن ثابت و غیرفعال کردن حالت تعاملی (--headless)
-        .\zrok\zrok2.exe share private --backend-mode tcpTunnel 127.0.0.1:3389 --share-token "rdp-tunnel" --headless
+        .\zrok\zrok2.exe share private --backend-mode tcpTunnel 127.0.0.1:3389 --headless
       shell: pwsh

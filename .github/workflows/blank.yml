@@ -33,7 +33,7 @@ jobs:
     - name: Reserve TCP share for RDP
       id: reserve
       run: |
-        $result = .\zrok\zrok.exe reserve private --backend-mode tcpTunnel 127.0.0.1:3389 --json-output
+        $result = .\zrok\zrok2.exe reserve private --backend-mode tcpTunnel 127.0.0.1:3389 --json-output
         $json = $result | ConvertFrom-Json
         $token = $json.token
         echo "ZROK_SHARE_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -41,5 +41,5 @@ jobs:
 
     - name: Share reserved TCP tunnel
       run: |
-        .\zrok\zrok.exe share reserved $env:ZROK_SHARE_TOKEN
+        .\zrok\zrok2.exe share reserved $env:ZROK_SHARE_TOKEN
       shell: pwsh

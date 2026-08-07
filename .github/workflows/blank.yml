@@ -30,16 +30,14 @@ jobs:
         ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
       run: .\zrok\zrok2.exe enable $env:ZROK_TOKEN
 
-    - name: Reserve TCP share for RDP
-      id: reserve
+    - name: Create private TCP tunnel for RDP
+      id: tunnel
       run: |
-        $result = .\zrok\zrok2.exe reserve private --backend-mode tcpTunnel 127.0.0.1:3389 --json-output
+        $result = .\zrok\zrok2.exe share private --backend-mode tcpTunnel 127.0.0.1:3389 --share-token "rdp-tunnel" --json-output
         $json = $result | ConvertFrom-Json
         $token = $json.token
+        if (-not $token) { $token = "rdp-tunnel" }
         echo "ZROK_SHARE_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Append
-        echo "Reserved share token: $token"
-
-    - name: Share reserved TCP tunnel
-      run: |
-        .\zrok\zrok2.exe share reserved $env:ZROK_SHARE_TOKEN
-      shell: pwsh
+        echo "Share token: $token"
+        # tunnel رو در پس‌زمینه نگه دار
+        Start-Job -ScriptBlock { .\zrok\zrok2.exe share private --backend-mode tcpTunnel 127.0.0.1:3389 --share-token "rdp-tunnel" }

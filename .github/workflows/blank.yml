@@ -9,20 +9,13 @@ jobs:
     steps:
     - name: Download and extract zrok
       run: |
-        New-Item -ItemType Directory -Force .\zrok_temp | Out-Null
-        curl.exe -L -o .\zrok_temp\zrok.tar.gz https://github.com/openziti/zrok/releases/download/v2.0.4/zrok_2.0.4_windows_amd64.tar.gz
-        tar -xzf .\zrok_temp\zrok.tar.gz -C .\zrok_temp
+        curl.exe -L -o zrok.tar.gz https://github.com/openziti/zrok/releases/download/v2.0.4/zrok_2.0.4_windows_amd64.tar.gz
+        tar -xzf zrok.tar.gz
+        Move-Item .\zrok_2.0.4_windows_amd64\zrok.exe .\zrok.exe -Force
+        Remove-Item .\zrok_2.0.4_windows_amd64 -Recurse -Force
+        Remove-Item zrok.tar.gz
         New-Item -ItemType Directory -Force .\zrok | Out-Null
-        $exe = Get-ChildItem -Path .\zrok_temp -Recurse -Filter "zrok.exe" | Select-Object -First 1
-        if ($exe) {
-            Copy-Item $exe.FullName -Destination .\zrok\zrok.exe -Force
-            Write-Host "zrok.exe found and copied to .\zrok\"
-        } else {
-            Write-Error "zrok.exe not found"
-            exit 1
-        }
-        Remove-Item .\zrok_temp -Recurse -Force
-        $env:Path = ".;.\zrok;" + $env:Path
+        Move-Item .\zrok.exe .\zrok\zrok.exe -Force
 
     - name: Enable RDP
       run: |

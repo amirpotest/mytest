@@ -66,5 +66,5 @@ jobs:
         run: |
           zrok2 share public \
             127.0.0.1:22 \
-            --backend-mode tcpTunnel \
+            --backend-mode proxy \
             --headless

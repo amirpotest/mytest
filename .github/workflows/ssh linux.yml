@@ -64,7 +64,5 @@ jobs:
       - name: Start SSH tunnel
         shell: bash
         run: |
-          zrok2 share public \
-            127.0.0.1:22 \
-            --backend-mode proxy \
-            --headless
+          zrok2.exe share private 127.0.0.1:3389 --backend-mode tcpTunnel --headless
+          netstat -ano | findstr 3389

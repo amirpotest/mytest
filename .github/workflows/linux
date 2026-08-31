@@ -1,0 +1,74 @@
+name: Linux RDP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install desktop and RDP
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            xfce4 \
+            xfce4-goodies \
+            xrdp \
+            dbus-x11 \
+            curl \
+            tar
+
+          # Use XFCE as the desktop session for xrdp
+          echo "startxfce4" | sudo tee /home/runner/.xsession > /dev/null
+
+          sudo chown runner:runner /home/runner/.xsession
+          sudo chmod 644 /home/runner/.xsession
+
+          # Allow xrdp to use its TLS certificate
+          sudo adduser xrdp ssl-cert || true
+
+          sudo systemctl enable xrdp
+          sudo systemctl restart xrdp
+
+      - name: Set RDP password
+        env:
+          RDP_PASSWORD: P@ssw0rd!
+        shell: bash
+        run: |
+          if [ -z "$RDP_PASSWORD" ]; then
+            echo "RDP_PASSWORD secret is not configured"
+            exit 1
+          fi
+
+          echo "runner:$RDP_PASSWORD" | sudo chpasswd
+
+      - name: Install zrok
+        shell: bash
+        run: |
+          curl -sSf https://get.zrok.io | sudo bash
+          zrok2 version
+
+      - name: Enable zrok
+        env:
+          ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$ZROK_TOKEN" ]; then
+            echo "ZROK_TOKEN secret is not configured"
+            exit 1
+          fi
+
+          zrok2 enable "$ZROK_TOKEN"
+
+      - name: Create private TCP tunnel for RDP
+        shell: bash
+        run: |
+          echo "Listening services:"
+          ss -ltnp
+
+          echo "Starting zrok private TCP tunnel..."
+          zrok2 share private 127.0.0.1:3389 \
+            --backend-mode tcpTunnel \
+            --headless

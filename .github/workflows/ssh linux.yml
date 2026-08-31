@@ -1,0 +1,70 @@
+name: SSH Linux
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install and configure SSH
+        env:
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+        shell: bash
+        run: |
+          if [ -z "$SSH_PUBLIC_KEY" ]; then
+            echo "SSH_PUBLIC_KEY secret is not configured"
+            exit 1
+          fi
+
+          sudo apt-get update
+          sudo apt-get install -y openssh-server curl
+
+          # Start SSH server
+          sudo systemctl enable ssh
+          sudo systemctl restart ssh
+
+          # Add your public key for the runner user
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+
+          printf '%s\n' "$SSH_PUBLIC_KEY" >> "$HOME/.ssh/authorized_keys"
+
+          chmod 600 "$HOME/.ssh/authorized_keys"
+
+          # Make sure SSH accepts public-key authentication
+          sudo sed -i \
+            -E 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+            /etc/ssh/sshd_config
+
+          sudo systemctl restart ssh
+
+          echo "SSH is listening:"
+          ss -ltnp | grep ':22'
+
+      - name: Install zrok
+        shell: bash
+        run: |
+          curl -sSf https://get.openziti.io/install.bash | sudo bash -s zrok2
+          zrok2 version
+
+      - name: Enable zrok
+        env:
+          ZROK_TOKEN: ${{ secrets.ZROK_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$ZROK_TOKEN" ]; then
+            echo "ZROK_TOKEN secret is not configured"
+            exit 1
+          fi
+
+          zrok2 enable "$ZROK_TOKEN"
+
+      - name: Start SSH tunnel
+        shell: bash
+        run: |
+          zrok2 share public \
+            127.0.0.1:22 \
+            --backend-mode tcpTunnel \
+            --headless
